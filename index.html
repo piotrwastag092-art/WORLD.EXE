@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WORLD.EXE — Living World</title>
+<style>
+:root{
+  --bg:#08100d;--panel:#101b17;--panel2:#14241d;--line:#294337;
+  --text:#dff8e9;--muted:#7fa18e;--accent:#49e58b;--accent2:#23aef2;
+  --danger:#ff5f6d;--gold:#ffd45a;--shadow:0 12px 40px #0008;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050907;color:var(--text);font-family:Inter,system-ui,Arial,sans-serif}
+button,input,select{font:inherit}
+button{
+  border:1px solid var(--line);background:#14231d;color:var(--text);
+  padding:8px 12px;border-radius:7px;cursor:pointer;transition:.15s
+}
+button:hover{border-color:var(--accent);background:#1a3027;transform:translateY(-1px)}
+button:active{transform:translateY(0)}
+input,select{
+  background:#08120e;color:var(--text);border:1px solid var(--line);
+  border-radius:7px;padding:9px
+}
+#app{height:100%;display:flex;flex-direction:column}
+#top{
+  height:54px;flex:none;background:linear-gradient(90deg,#0b1511,#101e18);
+  border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:7px 12px;
+  box-shadow:0 4px 20px #0008;z-index:10
+}
+.logo{font-weight:900;letter-spacing:2px;color:var(--accent);white-space:nowrap}
+.status{display:flex;gap:10px;align-items:center;flex:1;min-width:0}
+.stat{font-size:12px;color:var(--muted);white-space:nowrap}
+.stat b{color:var(--text)}
+.bar{height:6px;width:70px;background:#07100c;border-radius:8px;overflow:hidden;display:inline-block;vertical-align:middle}
+.bar i{display:block;height:100%;background:var(--accent)}
+#clock{font-family:monospace;color:var(--gold);white-space:nowrap}
+#main{flex:1;display:flex;min-height:0}
+#world{
+  position:relative;flex:1;overflow:hidden;background:#172c20;
+  user-select:none
+}
+#world canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:auto}
+#mapHint{
+  position:absolute;left:14px;top:12px;background:#07100dcc;border:1px solid #315440;
+  padding:8px 10px;border-radius:8px;font-size:12px;color:#b6d9c3;pointer-events:none
+}
+#playerMarker{
+  position:absolute;width:18px;height:18px;border-radius:50%;border:3px solid #fff;
+  box-shadow:0 0 18px var(--accent);pointer-events:none;transform:translate(-50%,-50%);
+  z-index:3
+}
+#right{
+  width:350px;flex:none;background:#0b1511;border-left:1px solid var(--line);
+  display:flex;flex-direction:column;min-height:0
+}
+.tabs{display:flex;overflow:auto;border-bottom:1px solid var(--line)}
+.tabs button{border:0;border-radius:0;background:#0b1511;color:var(--muted);font-size:12px}
+.tabs button.active{background:#14231d;color:var(--accent);box-shadow:inset 0 -2px var(--accent)}
+#panel{flex:1;overflow:auto;padding:12px}
+.section{margin-bottom:15px}
+.section h3{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin:0 0 8px}
+.row{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:6px 0}
+.small{font-size:12px;color:var(--muted)}
+.big{font-size:20px;font-weight:800}
+.card{
+  background:linear-gradient(135deg,#101d17,#0d1813);
+  border:1px solid var(--line);border-radius:9px;padding:10px;margin:7px 0
+}
+.item{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  border:1px solid #22382d;border-radius:7px;padding:8px;margin:5px 0;background:#0b1611
+}
+.badge{font-size:10px;border-radius:12px;padding:3px 6px;border:1px solid var(--line);color:var(--muted)}
+.rarity-common{color:#ddd}.rarity-uncommon{color:#68f08d}.rarity-rare{color:#61b7ff}
+.rarity-epic{color:#d884ff}.rarity-legendary{color:#ffd45a}.rarity-mythic{color:#ff6cba}
+.quest{border-left:3px solid var(--accent2);padding-left:9px}
+.quest.done{opacity:.5;border-color:#4d765e}
+#feed{
+  position:absolute;left:14px;bottom:14px;width:min(420px,calc(100% - 28px));
+  display:flex;flex-direction:column;gap:6px;pointer-events:none;z-index:5
+}
+.toast{
+  background:#07100ee8;border:1px solid #315440;border-radius:8px;padding:9px 11px;
+  font-size:12px;box-shadow:var(--shadow);animation:toastIn .2s ease
+}
+@keyframes toastIn{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+#mini{
+  position:absolute;right:14px;bottom:14px;width:155px;height:115px;border:1px solid #426050;
+  border-radius:8px;background:#07100eee;z-index:4;overflow:hidden
+}
+#mini canvas{width:100%;height:100%}
+#controls{
+  position:absolute;left:50%;bottom:16px;transform:translateX(-50%);
+  display:flex;gap:5px;z-index:5
+}
+#controls button{width:40px;height:36px;padding:0;font-weight:800}
+.modal{
+  position:fixed;inset:0;background:#0009;display:flex;align-items:center;justify-content:center;
+  z-index:100;padding:20px
+}
+.modal.hidden{display:none}
+.modalBox{
+  width:min(760px,96vw);max-height:90vh;overflow:auto;background:#0d1914;
+  border:1px solid #3a5e4a;border-radius:12px;box-shadow:0 25px 90px #000;
+  padding:20px
+}
+.modalBox h2{margin-top:0;color:var(--accent)}
+.close{float:right}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kbd{
+  display:inline-block;border:1px solid #456250;background:#0a140f;border-radius:4px;
+  padding:2px 5px;font-family:monospace;font-size:11px
+}
+#start{
+  position:fixed;inset:0;background:#030605;z-index:999;display:flex;align-items:center;
+  justify-content:center;flex-direction:column;color:#c9ffe0
+}
+#start.hidden{display:none}
+.bootTitle{font-size:42px;font-weight:900;letter-spacing:8px;color:var(--accent);text-shadow:0 0 25px #49e58b55}
+.bootSub{color:#668774;margin:12px}
+.bootBar{width:min(500px,80vw);height:7px;background:#0d1a14;border:1px solid #274334;border-radius:8px;overflow:hidden}
+.bootBar i{display:block;height:100%;width:0;background:var(--accent);transition:.2s}
+#bootLog{height:100px;width:min(600px,85vw);margin-top:15px;color:#6ca27e;font:12px monospace;overflow:hidden}
+@media(max-width:900px){
+  #right{width:300px}.status .hideMob{display:none}
+}
+@media(max-width:700px){
+  #right{position:absolute;right:0;top:54px;bottom:0;width:min(94vw,360px);z-index:20;box-shadow:-20px 0 50px #0008}
+  .grid2,.grid3{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div id="start">
+  <div class="bootTitle">WORLD.EXE</div>
+  <div class="bootSub">INITIALIZING LIVING WORLD...</div>
+  <div class="bootBar"><i id="bootProgress"></i></div>
+  <div id="bootLog"></div>
+  <button id="skipBoot">POMIŃ BOOT</button>
+</div>
+
+<div id="app">
+  <header id="top">
+    <div class="logo">WORLD.EXE</div>
+    <div class="status">
+      <span class="stat">LV <b id="hudLevel">1</b></span>
+      <span class="stat">HP <span class="bar"><i id="hpBar"></i></span> <b id="hudHp">100</b></span>
+      <span class="stat hideMob">ENERGY <span class="bar"><i id="energyBar"></i></span></span>
+      <span class="stat hideMob">💰 <b id="hudMoney">500</b></span>
+      <span class="stat hideMob">🌡️ <b id="hudWeather">Clear</b></span>
+      <span class="stat hideMob">📍 <b id="hudLocation">Unknown</b></span>
+    </div>
+    <div id="clock">DAY 1 • 08:00</div>
+    <button onclick="toggleRight()">☰</button>
+  </header>
+
+  <main id="main">
+    <section id="world">
+      <canvas id="canvas"></canvas>
+      <div id="mapHint">Kliknij mapę, aby się poruszać • WASD / strzałki</div>
+      <div id="playerMarker"></div>
+      <div id="feed"></div>
+      <div id="mini"><canvas id="miniCanvas"></canvas></div>
+      <div id="controls">
+        <button onclick="move(0,-1)">▲</button>
+        <button onclick="move(-1,0)">◀</button>
+        <button onclick="interact()">●</button>
+        <button onclick="move(1,0)">▶</button>
+        <button onclick="move(0,1)">▼</button>
+      </div>
+    </section>
+
+    <aside id="right">
+      <div class="tabs">
+        <button class="active" data-tab="player">👤</button>
+        <button data-tab="inventory">🎒</button>
+        <button data-tab="quests">📜</button>
+        <button data-tab="world">🌍</button>
+        <button data-tab="economy">💰</button>
+        <button data-tab="skills">🧠</button>
+      </div>
+      <div id="panel"></div>
+    </aside>
+  </main>
+</div>
+
+<div id="modal" class="modal hidden">
+  <div class="modalBox">
+    <button class="close" onclick="closeModal()">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================
+   WORLD.EXE — SINGLE FILE GAME
+   ========================================================= */
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+const WORLD_SIZE = 120;
+const TILE = 42;
+const SAVE_KEY = "world_exe_save_v1";
+
+let canvas,ctx,mini,miniCtx;
+let lastTime=0,gameStarted=false;
+let activeTab="player";
+let mouseTarget=null;
+
+const state = {
+  seed: Math.floor(Math.random()*999999999),
+  day:1, minutes:480,
+  weather:"clear",
+  weatherTimer:0,
+  money:500,
+  xp:0,
+  level:1,
+  hp:100,maxHp:100,
+  energy:100,maxEnergy:100,
+  hunger:100,
+  player:{x:60,y:60},
+  inventory:{
+    "Chleb":3,
+    "Woda":5,
+    "Złom":2
+  },
+  equipment:{
+    weapon:"Pięść",
+    vehicle:"Brak"
+  },
+  skills:{
+    strength:1,
+    intelligence:1,
+    survival:1,
+    economy:1,
+    technology:1,
+    exploration:1
+  },
+  reputation:{
+    citizens:0,
+    guild:0,
+    scientists:0,
+    syndicate:0
+  },
+  world:{
+    discovered:[],
+    buildings:{},
+    clearedDungeons:[],
+    visited:[],
+    events:[]
+  },
+  quests:[],
+  achievements:[],
+  messages:[],
+  flags:{},
+  stats:{
+    steps:0,
+    battles:0,
+    wins:0,
+    deaths:0,
+    trades:0,
+    discoveries:0,
+    quests:0,
+    crafted:0,
+    moneyEarned:0
+  }
+};
+
+const terrainNames={
+  water:"Ocean",
+  sand:"Pustynia",
+  grass:"Łąki",
+  forest:"Las",
+  mountain:"Góry",
+  snow:"Śnieżne Góry",
+  swamp:"Bagna"
+};
+
+const items={
+  "Chleb":{type:"food",price:12,rarity:"common",use:20},
+  "Woda":{type:"food",price:8,rarity:"common",use:25},
+  "Apteczka":{type:"heal",price:75,rarity:"uncommon",use:40},
+  "Złom":{type:"material",price:10,rarity:"common"},
+  "Żelazo":{type:"material",price:35,rarity:"uncommon"},
+  "Kryształ":{type:"material",price:120,rarity:"rare"},
+  "Bateria":{type:"material",price:65,rarity:"uncommon"},
+  "Mapa Starego Świata":{type:"quest",price:250,rarity:"rare"},
+  "Miecz Rdzy":{type:"weapon",price:160,rarity:"uncommon",damage:8},
+  "Plazmowy Tasak":{type:"weapon",price:850,rarity:"epic",damage:22},
+  "Relikt ???":{type:"artifact",price:5000,rarity:"mythic"}
+};
+
+const locations=[
+  {id:"capital",name:"Nova City",x:60,y:60,type:"city",icon:"🏙️"},
+  {id:"port",name:"Port Azure",x:82,y:66,type:"city",icon:"⚓"},
+  {id:"oldtown",name:"Old Town",x:39,y:72,type:"city",icon:"🏚️"},
+  {id:"lab",name:"Helix Lab",x:74,y:37,type:"lab",icon:"🧪"},
+  {id:"mine",name:"Iron Mine",x:28,y:37,type:"mine",icon:"⛏️"},
+  {id:"bunker",name:"Bunker 7",x:91,y:24,type:"secret",icon:"☢️"},
+  {id:"dungeon",name:"Black Dungeon",x:17,y:92,type:"dungeon",icon:"💀"},
+  {id:"airport",name:"Skyport",x:105,y:76,type:"airport",icon:"✈️"},
+  {id:"village",name:"Green Village",x:53,y:93,type:"village",icon:"🏡"},
+  {id:"tower",name:"Signal Tower",x:101,y:42,type:"tower",icon:"📡"}
+];
+
+const npcs=[
+  {id:"mila",name:"Mila",x:59,y:58,job:"Handlarka",personality:"życzliwa",faction:"citizens"},
+  {id:"boris",name:"Boris",x:63,y:62,job:"Strażnik",personality:"podejrzliwy",faction:"citizens"},
+  {id:"drx",name:"Dr. X",x:74,y:39,job:"Naukowiec",personality:"genialny",faction:"scientists"},
+  {id:"kazik",name:"Kazik",x:40,y:70,job:"Przemytnik",personality:"cwany",faction:"syndicate"},
+  {id:"lena",name:"Lena",x:51,y:94,job:"Rolniczka",personality:"spokojna",faction:"citizens"},
+  {id:"zero",name:"Agent Zero",x:90,y:25,job:"???",personality:"???",faction:"syndicate"}
+];
+
+const enemyTypes=[
+  {name:"Dziki Pies",hp:28,damage:6,xp:18,loot:["Złom"]},
+  {name:"Bandzior",hp:45,damage:9,xp:28,loot:["Złom","Woda"]},
+  {name:"Mutant",hp:70,damage:14,xp:55,loot:["Kryształ","Złom"]},
+  {name:"Strażnik Ruin",hp:110,damage:18,xp:100,loot:["Żelazo","Bateria"]},
+  {name:"???",hp:250,damage:25,xp:400,loot:["Relikt ???"]}
+];
+
+let world=[];
+
+/* ---------- UTIL ---------- */
+
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function rand(a,b){return Math.random()*(b-a)+a}
+function rint(a,b){return Math.floor(rand(a,b+1))}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function hash(x,y){
+  let n = Math.sin(x*127.1+y*311.7+state.seed*.0001)*43758.5453;
+  return n-Math.floor(n);
+}
+function noise(x,y){
+  const x0=Math.floor(x),y0=Math.floor(y);
+  const xf=x-x0,yf=y-y0;
+  const a=hash(x0,y0),b=hash(x0+1,y0),c=hash(x0,y0+1),d=hash(x0+1,y0+1);
+  const u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);
+  return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v;
+}
+function fbm(x,y){
+  let total=0,amp=.5,freq=1;
+  for(let i=0;i<5;i++){total+=noise(x*freq,y*freq)*amp;amp*=.5;freq*=2}
+  return total;
+}
+function notify(text,type="info"){
+  state.messages.unshift({text,time:Date.now()});
+  if(state.messages.length>30)state.messages.pop();
+  const el=document.createElement("div");
+  el.className="toast";
+  el.textContent=text;
+  $("#feed").appendChild(el);
+  setTimeout(()=>el.remove(),4200);
+}
+function gainXP(amount){
+  state.xp+=amount;
+  while(state.xp>=state.level*100){
+    state.xp-=state.level*100;
+    state.level++;
+    state.maxHp+=8;
+    state.maxEnergy+=5;
+    state.hp=state.maxHp;
+    notify("⬆️ AWANS! Poziom "+state.level);
+    unlockAchievement("Poziom "+state.level);
+  }
+}
+function addItem(name,count=1){
+  state.inventory[name]=(state.inventory[name]||0)+count;
+  renderPanel();
+}
+function removeItem(name,count=1){
+  if((state.inventory[name]||0)<count)return false;
+  state.inventory[name]-=count;
+  if(state.inventory[name]<=0)delete state.inventory[name];
+  return true;
+}
+function hasItem(name,count=1){return (state.inventory[name]||0)>=count}
+
+/* ---------- WORLD GENERATION ---------- */
+
+function generateWorld(){
+  world=[];
+  for(let y=0;y<WORLD_SIZE;y++){
+    const row=[];
+    for(let x=0;x<WORLD_SIZE;x++){
+      const n=fbm(x/18,y/18);
+      let type;
+      if(n<.25)type="water";
+      else if(n<.33)type="sand";
+      else if(n<.61)type="grass";
+      else if(n<.76)type="forest";
+      else if(n<.89)type="mountain";
+      else if(n<.95)type="snow";
+      else type="swamp";
+      row.push({type});
+    }
+    world.push(row);
+  }
+
+  // flatten areas around important locations
+  for(const l of locations){
+    for(let y=l.y-3;y<=l.y+3;y++)
+      for(let x=l.x-3;x<=l.x+3;x++)
+        if(world[y]&&world[y][x])world[y][x].type=l.type==="dungeon"?"mountain":"grass";
+  }
+}
+function tileAt(x,y){
+  if(x<0||y<0||x>=WORLD_SIZE||y>=WORLD_SIZE)return {type:"water"};
+  return world[y][x];
+}
+
+/* ---------- DRAWING ---------- */
+
+function resize(){
+  canvas.width=innerWidth-$("#right").offsetWidth;
+  canvas.height=innerHeight-54;
+  mini.width=155;mini.height=115;
+}
+window.addEventListener("resize",resize);
+
+function tileColor(type){
+  return {
+    water:"#164b66",sand:"#b18b4e",grass:"#315c38",forest:"#21462d",
+    mountain:"#555d59",snow:"#aebdc0",swamp:"#294c3d"
+  }[type]||"#222";
+}
+
+function draw(){
+  if(!ctx)return;
+  const w=canvas.width,h=canvas.height;
+  ctx.clearRect(0,0,w,h);
+
+  const viewW=Math.ceil(w/TILE)+2;
+  const viewH=Math.ceil(h/TILE)+2;
+  const ox=state.player.x*TILE-w/2;
+  const oy=state.player.y*TILE-h/2;
+
+  for(let sy=0;sy<viewH;sy++){
+    for(let sx=0;sx<viewW;sx++){
+      const wx=Math.floor(ox/TILE)+sx;
+      const wy=Math.floor(oy/TILE)+sy;
+      const t=tileAt(wx,wy);
+      const px=wx*TILE-ox,py=wy*TILE-oy;
+      ctx.fillStyle=tileColor(t.type);
+      ctx.fillRect(px,py,TILE+1,TILE+1);
+
+      // terrain details
+      const hv=hash(wx,wy);
+      ctx.globalAlpha=.16;
+      if(t.type==="forest"){
+        ctx.fillStyle="#0a2817";
+        for(let i=0;i<3;i++){
+          ctx.beginPath();
+          ctx.arc(px+8+((hv*31+i*13)%27),py+9+((hv*19+i*17)%25),4,0,Math.PI*2);
+          ctx.fill();
+        }
+      }else if(t.type==="mountain"){
+        ctx.fillStyle="#d5ddd8";
+        ctx.beginPath();
+        ctx.moveTo(px+7,py+34);ctx.lineTo(px+21,py+7);ctx.lineTo(px+35,py+34);ctx.fill();
+      }else if(t.type==="water"){
+        ctx.strokeStyle="#6ac6e9";ctx.beginPath();
+        ctx.moveTo(px+5,py+20);ctx.quadraticCurveTo(px+20,py+14,px+36,py+20);ctx.stroke();
+      }
+      ctx.globalAlpha=1;
+    }
+  }
+
+  // locations
+  for(const l of locations){
+    const px=l.x*TILE-ox,py=l.y*TILE-oy;
+    if(px<-80||py<-80||px>w+80||py>h+80)continue;
+    ctx.font="24px sans-serif";
+    ctx.textAlign="center";
+    ctx.fillText(l.icon,px,py);
+    ctx.font="11px sans-serif";
+    ctx.fillStyle="#fff";
+    ctx.fillText(l.name,px,py+23);
+  }
+
+  // NPCs
+  for(const n of npcs){
+    const px=n.x*TILE-ox,py=n.y*TILE-oy;
+    if(px<0||py<0||px>w||py>h)continue;
+    ctx.fillStyle="#ffd45a";
+    ctx.beginPath();ctx.arc(px,py,7,0,Math.PI*2);ctx.fill();
+    ctx.font="10px sans-serif";ctx.textAlign="center";ctx.fillStyle="#fff";
+    ctx.fillText(n.name,px,py-11);
+  }
+
+  // player
+  const ppx=state.player.x*TILE-ox,ppy=state.player.y*TILE-oy;
+  $("#playerMarker").style.left=ppx+"px";
+  $("#playerMarker").style.top=ppy+"px";
+
+  drawMini();
+}
+
+function drawMini(){
+  miniCtx.clearRect(0,0,155,115);
+  const sx=155/WORLD_SIZE,sy=115/WORLD_SIZE;
+  for(let y=0;y<WORLD_SIZE;y+=2){
+    for(let x=0;x<WORLD_SIZE;x+=2){
+      miniCtx.fillStyle=tileColor(tileAt(x,y).type);
+      miniCtx.fillRect(x*sx,y*sy,Math.ceil(sx*2),Math.ceil(sy*2));
+    }
+  }
+  for(const l of locations){
+    miniCtx.fillStyle="#ffd45a";
+    miniCtx.fillRect(l.x*sx-1,l.y*sy-1,3,3);
+  }
+  miniCtx.fillStyle="#fff";
+  miniCtx.beginPath();
+  miniCtx.arc(state.player.x*sx,state.player.y*sy,3,0,Math.PI*2);
+  miniCtx.fill();
+}
+
+/* ---------- MOVEMENT ---------- */
+
+function move(dx,dy){
+  const nx=Math.round(state.player.x+dx),ny=Math.round(state.player.y+dy);
+  const t=tileAt(nx,ny);
+  if(t.type==="water"){
+    notify("🌊 Nie możesz przejść przez wodę.");
+    return;
+  }
+  if(t.type==="mountain" && Math.random()<.35){
+    notify("⛰️ Teren jest zbyt trudny.");
+    return;
+  }
+  state.player.x=clamp(nx,0,WORLD_SIZE-1);
+  state.player.y=clamp(ny,0,WORLD_SIZE-1);
+  state.stats.steps++;
+  state.energy=clamp(state.energy-.7,0,state.maxEnergy);
+  state.hunger=clamp(state.hunger-.15,0,100);
+
+  discoverAround();
+  randomEncounter();
+  checkQuests();
+  updateLocation();
+  renderPanel();
+  save();
+}
+function updateLocation(){
+  const l=locations.find(a=>Math.abs(a.x-state.player.x)<=2&&Math.abs(a.y-state.player.y)<=2);
+  $("#hudLocation").textContent=l?l.name:terrainNames[tileAt(state.player.x,state.player.y).type];
+}
+function interact(){
+  const nearLoc=locations.find(l=>dist(l,state.player)<4);
+  if(nearLoc){openLocation(nearLoc);return}
+  const nearNpc=npcs.find(n=>dist(n,state.player)<2.5);
+  if(nearNpc){talk(nearNpc);return}
+  if(tileAt(state.player.x,state.player.y).type==="forest"){
+    if(Math.random()<.45){addItem("Złom",1);notify("🌲 Znaleziono coś w lesie.");}
+    else notify("🌲 Nic ciekawego.");
+  }else if(tileAt(state.player.x,state.player.y).type==="mountain"){
+    if(Math.random()<.35){addItem("Żelazo",1);notify("⛏️ Wydobyto Żelazo.");}
+  }else{
+    notify("Nic tutaj nie ma.");
+  }
+}
+
+/* ---------- DISCOVERY ---------- */
+
+function discoverAround(){
+  for(const l of locations){
+    if(dist(l,state.player)<3&&!state.world.discovered.includes(l.id)){
+      state.world.discovered.push(l.id);
+      state.stats.discoveries++;
+      gainXP(30);
+      notify("🗺️ ODKRYTO: "+l.name);
+      if(state.stats.discoveries===5)unlockAchievement("Kartograf");
+    }
+  }
+}
+
+/* ---------- NPC ---------- */
+
+function talk(n){
+  let text="";
+  if(n.id==="mila"){
+    text="Mila: Cześć! Mogę sprzedać Ci podstawowe rzeczy. Jeśli masz coś ciekawego, też kupię.";
+    state.reputation.citizens++;
+  }else if(n.id==="boris"){
+    text=state.reputation.citizens<2?
+      "Boris: Nie znam Cię. Trzymaj się z dala od problemów.":
+      "Boris: W porządku. Zaczynam Ci ufać.";
+  }else if(n.id==="drx"){
+    text="Dr. X: Anomalie na wschodzie są... interesujące. Przynieś mi 2 Kryształy.";
+    if(hasItem("Kryształ",2)){
+      removeItem("Kryształ",2);gainXP(100);state.reputation.scientists+=5;
+      addItem("Bateria",2);notify("🧪 Dr. X przeprowadził eksperyment.");
+    }
+  }else if(n.id==="kazik"){
+    text="Kazik: Mam rzeczy, których oficjalnie nie mam. Ale nic nie słyszałeś.";
+    state.reputation.syndicate++;
+  }else if(n.id==="lena"){
+    text="Lena: Ziemia jest spokojna. Ostatnio jednak nocą widzę światła na niebie...";
+  }else{
+    text="Agent Zero patrzy na Ciebie. „Nie powinieneś jeszcze wiedzieć, że tu jestem.”";
+    if(state.level>=10){
+      state.flags.zero=true;
+      notify("👁️ Agent Zero coś Ci zdradził.");
+    }
+  }
+  showModal(`<h2>${n.name}</h2><p>${text}</p><button onclick="closeModal()">OK</button>`);
+}
+
+/* ---------- LOCATIONS ---------- */
+
+function openLocation(l){
+  if(l.type==="city"||l.type==="village")openCity(l);
+  else if(l.type==="mine")openMine(l);
+  else if(l.type==="lab")openLab(l);
+  else if(l.type==="dungeon")openDungeon(l);
+  else if(l.type==="secret")openBunker(l);
+  else if(l.type==="airport")openAirport(l);
+  else if(l.type==="tower")openTower(l);
+}
+
+function openCity(l){
+  showModal(`
+    <h2>${l.icon} ${l.name}</h2>
+    <p>Miasto tętni życiem. Możesz handlować, odpocząć albo poszukać pracy.</p>
+    <div class="grid2">
+      <button onclick="openShop()">🛒 Sklep</button>
+      <button onclick="rest()">🛏️ Odpocznij</button>
+      <button onclick="work()">💼 Pracuj</button>
+      <button onclick="bank()">🏦 Bank</button>
+    </div>
+  `);
+}
+function openMine(){
+  showModal(`
+    <h2>⛏️ Kopalnia</h2>
+    <p>Wydobywaj materiały. Im wyższy Survival, tym większa szansa na rzadki loot.</p>
+    <button onclick="mine()">⛏️ Wydobywaj</button>
+  `);
+}
+function mine(){
+  closeModal();
+  if(state.energy<10){notify("Za mało energii.");return}
+  state.energy-=10;
+  const chance=Math.random();
+  if(chance<.55)addItem("Żelazo",rint(1,3));
+  else if(chance<.8)addItem("Złom",rint(2,5));
+  else addItem("Kryształ",1);
+  gainXP(20);
+  state.stats.crafted++;
+  notify("⛏️ Wydobycie zakończone.");
+  save();
+}
+function openLab(){
+  showModal(`
+    <h2>🧪 Helix Lab</h2>
+    <p>Laboratorium prowadzi badania nad energią i anomaliami.</p>
+    <button onclick="research()">🧬 Przeprowadź badanie — 1 Kryształ</button>
+  `);
+}
+function research(){
+  if(!hasItem("Kryształ")){notify("Potrzebujesz Kryształu.");return}
+  removeItem("Kryształ");
+  state.skills.technology++;
+  gainXP(80);
+  state.reputation.scientists+=2;
+  notify("🧬 Technologia +1");
+  closeModal();save();
+}
+function openDungeon(){
+  if(state.level<3){
+    notify("💀 Dungeon jest zbyt niebezpieczny. Wymagany poziom 3.");
+    return;
+  }
+  showModal(`
+    <h2>💀 Black Dungeon</h2>
+    <p>Wchodzisz do proceduralnego dungeonu.</p>
+    <button onclick="enterDungeon()">⚔️ WEJDŹ</button>
+  `);
+}
+function enterDungeon(){
+  closeModal();
+  let fights=rint(2,4);
+  let wins=0;
+  for(let i=0;i<fights;i++){
+    if(combat(enemyTypes[rint(0,enemyTypes.length-2)]))wins++;
+    if(state.hp<=0)break;
+  }
+  if(state.hp>0&&wins===fights){
+    const boss=enemyTypes[enemyTypes.length-1];
+    if(combat(boss)){
+      addItem("Relikt ???",1);
+      gainXP(300);
+      unlockAchievement("Pogromca ???");
+    }
+  }
+  save();
+}
+function openBunker(){
+  if(state.level<8&&!state.flags.zero){
+    showModal(`<h2>☢️ BUNKER 7</h2><p>Drzwi nie reagują. Czujesz, że brakuje Ci jakiegoś „klucza”.</p>`);
+    return;
+  }
+  state.flags.bunker=true;
+  addItem("Mapa Starego Świata",1);
+  gainXP(250);
+  unlockAchievement("Zakazana strefa");
+  showModal(`<h2>☢️ BUNKER 7</h2><p>Drzwi otwierają się. W środku znajduje się mapa czegoś, czego nie ma na oficjalnych mapach.</p>`);
+}
+function openAirport(){
+  showModal(`
+    <h2>✈️ Skyport</h2>
+    <p>Loty do odkrytych miast.</p>
+    <button onclick="fly()">✈️ Poleć za 100💰</button>
+  `);
+}
+function fly(){
+  if(state.money<100){notify("Za mało pieniędzy.");return}
+  state.money-=100;
+  const city=locations.filter(l=>l.type==="city"||l.type==="village")[rint(0,3)];
+  state.player.x=city.x;state.player.y=city.y;
+  closeModal();notify("✈️ Wylądowano w "+city.name);save();
+}
+function openTower(){
+  state.flags.tower=true;
+  showModal(`
+    <h2>📡 Signal Tower</h2>
+    <p>Sygnał pochodzi z miejsca oddalonego o 312 km. Nie ma go na mapie.</p>
+    <button onclick="scanSignal()">📡 Skanuj</button>
+  `);
+}
+function scanSignal(){
+  if(Math.random()<.7){
+    state.flags.signal=true;
+    notify("📡 Odkryto anomalię!");
+    gainXP(120);
+    unlockAchievement("Sygnał");
+  }
+  closeModal();save();
+}
+
+/* ---------- COMBAT ---------- */
+
+function combat(template){
+  const e={...template};
+  while(e.hp>0 && state.hp>0){
+    const playerDamage=4+state.skills.strength*3+(items[state.equipment.weapon]?.damage||0);
+    e.hp-=playerDamage;
+    if(e.hp<=0){
+      state.stats.wins++;
+      state.stats.battles++;
+      gainXP(e.xp);
+      const loot=e.loot[rint(0,e.loot.length-1)];
+      addItem(loot,1);
+      notify("⚔️ Pokonano "+e.name+" • +"+e.xp+" XP");
+      return true;
+    }
+    const damage=Math.max(1,e.damage-rint(0,state.skills.strength));
+    state.hp-=damage;
+    state.stats.battles++;
+    if(state.hp<=0){
+      die();
+      return false;
+    }
+  }
+  return false;
+}
+function randomEncounter(){
+  if(Math.random()>0.035)return;
+  const t=enemyTypes[rint(0,2)];
+  notify("⚠️ Zaatakował Cię: "+t.name);
+  combat(t);
+}
+function die(){
+  state.stats.deaths++;
+  state.hp=Math.floor(state.maxHp*.5);
+  state.energy=50;
+  state.money=Math.floor(state.money*.8);
+  state.player.x=60;state.player.y=60;
+  notify("💀 Zginąłeś. Straciłeś 20% pieniędzy.");
+  unlockAchievement("Pierwsza śmierć");
+}
+
+/* ---------- SHOP / BANK / ECONOMY ---------- */
+
+function openShop(){
+  let html=`<h2>🛒 Sklep</h2><p>Stan konta: <b>${state.money}💰</b></p>`;
+  for(const [name,it] of Object.entries(items)){
+    if(it.type==="quest"||it.type==="artifact")continue;
+    html+=`<div class="item">
+      <span>${name} <small class="badge rarity-${it.rarity}">${it.rarity}</small></span>
+      <span>${it.price}💰 <button onclick="buy('${name}')">KUP</button></span>
+    </div>`;
+  }
+  showModal(html);
+}
+function buy(name){
+  const price=items[name].price;
+  if(state.money<price){notify("Nie stać Cię.");return}
+  state.money-=price;addItem(name,1);state.stats.trades++;
+  notify("🛒 Kupiono "+name);
+}
+function bank(){
+  showModal(`
+    <h2>🏦 Bank</h2>
+    <p>Gotówka: ${state.money}💰</p>
+    <p>Bank działa jako prosty magazyn pieniędzy.</p>
+    <button onclick="bankInterest()">📈 Odbierz dzienny bonus</button>
+  `);
+}
+function bankInterest(){
+  if(state.flags.bankDay===state.day){notify("Bonus już odebrany.");return}
+  state.flags.bankDay=state.day;
+  const bonus=25+state.level*5;
+  state.money+=bonus;state.stats.moneyEarned+=bonus;
+  notify("🏦 Bonus bankowy +"+bonus+"💰");
+  closeModal();save();
+}
+function work(){
+  const earn=35+state.skills.economy*8+rint(0,30);
+  state.money+=earn;
+  state.energy=clamp(state.energy-20,0,state.maxEnergy);
+  state.stats.moneyEarned+=earn;
+  gainXP(20);
+  notify("💼 Zarobiłeś "+earn+"💰");
+  closeModal();save();
+}
+function rest(){
+  state.hp=state.maxHp;
+  state.energy=state.maxEnergy;
+  state.hunger=clamp(state.hunger+30,0,100);
+  state.minutes+=60;
+  notify("🛏️ Odpocząłeś.");
+  closeModal();save();
+}
+
+/* ---------- INVENTORY ---------- */
+
+function useItem(name){
+  const it=items[name];
+  if(!it||!hasItem(name))return;
+  if(it.type==="food"){
+    removeItem(name);
+    state.hunger=clamp(state.hunger+it.use,0,100);
+    state.energy=clamp(state.energy+10,0,state.maxEnergy);
+    notify("🍴 Użyto "+name);
+  }else if(it.type==="heal"){
+    removeItem(name);
+    state.hp=clamp(state.hp+it.use,0,state.maxHp);
+    notify("❤️ Użyto "+name);
+  }else if(it.type==="weapon"){
+    state.equipment.weapon=name;
+    notify("⚔️ Wyposażono "+name);
+  }
+  renderPanel();save();
+}
+
+/* ---------- QUESTS ---------- */
+
+function ensureQuests(){
+  if(state.quests.length)return;
+  state.quests=[
+    {id:"first",title:"Pierwsze kroki",desc:"Przejdź 10 pól.",goal:10,value:0,reward:80,done:false,type:"steps"},
+    {id:"city",title:"Kartograf",desc:"Odkryj 3 lokacje.",goal:3,value:0,reward:120,done:false,type:"discover"},
+    {id:"money",title:"Pieniądze lub śmierć",desc:"Zdobądź 1000💰.",goal:1000,value:0,reward:250,done:false,type:"money"},
+    {id:"fight",title:"Pierwsza krew",desc:"Wygraj 3 walki.",goal:3,value:0,reward:150,done:false,type:"wins"},
+    {id:"crystal",title:"Naukowiec",desc:"Zdobądź 2 Kryształy.",goal:2,value:0,reward:200,done:false,type:"crystal"}
+  ];
+}
+function checkQuests(){
+  for(const q of state.quests){
+    if(q.done)continue;
+    if(q.type==="steps")q.value=Math.min(q.goal,state.stats.steps);
+    if(q.type==="discover")q.value=Math.min(q.goal,state.stats.discoveries);
+    if(q.type==="money")q.value=Math.min(q.goal,state.money);
+    if(q.type==="wins")q.value=Math.min(q.goal,state.stats.wins);
+    if(q.type==="crystal")q.value=Math.min(q.goal,state.inventory["Kryształ"]||0);
+    if(q.value>=q.goal){
+      q.done=true;state.money+=q.reward;state.stats.quests++;
+      gainXP(100);
+      notify("📜 QUEST UKOŃCZONY: "+q.title+" • +"+q.reward+"💰");
+    }
+  }
+}
+
+/* ---------- ACHIEVEMENTS ---------- */
+
+function unlockAchievement(name){
+  if(state.achievements.includes(name))return;
+  state.achievements.push(name);
+  notify("🏆 Osiągnięcie: "+name);
+}
+function autoAchievements(){
+  if(state.stats.steps>=100)unlockAchievement("Spacerowicz");
+  if(state.stats.wins>=10)unlockAchievement("Wojownik");
+  if(state.stats.moneyEarned>=5000)unlockAchievement("Kapitalista");
+  if(state.world.discovered.length>=8)unlockAchievement("Wielki Odkrywca");
+  if(state.stats.crafted>=20)unlockAchievement("Rzemieślnik");
+  if(state.day>=10)unlockAchievement("Dziesięć dni");
+  if(state.flags.bunker&&state.flags.signal)unlockAchievement("Anomalia");
+}
+
+/* ---------- TIME / WEATHER / EVENTS ---------- */
+
+function tick(dt){
+  state.minutes+=dt*.55;
+  if(state.minutes>=1440){
+    state.minutes-=1440;state.day++;
+    state.energy=state.maxEnergy;
+    state.hunger=clamp(state.hunger-10,0,100);
+    dailyEvent();
+  }
+  state.weatherTimer-=dt;
+  if(state.weatherTimer<=0){
+    state.weatherTimer=rand(60,150);
+    state.weather=["clear","rain","storm","fog","snow"][rint(0,4)];
+    notify("🌦️ Pogoda: "+weatherName());
+  }
+  if(state.hunger<=0){
+    state.hp=clamp(state.hp-.02*dt,0,state.maxHp);
+  }
+  if(state.hp<=0)die();
+  autoAchievements();
+  checkQuests();
+}
+function weatherName(){
+  return {clear:"Bezchmurnie",rain:"Deszcz",storm:"Burza",fog:"Mgła",snow:"Śnieg"}[state.weather];
+}
+function dailyEvent(){
+  const events=[
+    ["📈 Gospodarka rośnie. Ceny są dziś wyższe.",()=>state.money+=25],
+    ["🌧️ Ulewy utrudniają podróżowanie.",()=>state.energy=Math.max(0,state.energy-10)],
+    ["🎁 Znaleziono paczkę przy drodze.",()=>addItem("Apteczka",1)],
+    ["📰 W mieście trwa festiwal.",()=>state.reputation.citizens+=2],
+    ["🛸 Świadkowie zgłaszają światła na niebie.",()=>state.flags.ufo=true]
+  ];
+  const e=events[rint(0,events.length-1)];
+  notify(e[0]);e[1]();
+}
+
+/* ---------- CRAFTING ---------- */
+
+function crafting(){
+  showModal(`
+    <h2>🔧 Crafting</h2>
+    <div class="item"><span>Apteczka</span><button onclick="craft('Apteczka')">2 Złom + 1 Woda</button></div>
+    <div class="item"><span>Miecz Rdzy</span><button onclick="craft('Miecz Rdzy')">3 Żelazo + 2 Złom</button></div>
+    <div class="item"><span>Plazmowy Tasak</span><button onclick="craft('Plazmowy Tasak')">2 Kryształ + 2 Bateria</button></div>
+  `);
+}
+function craft(name){
+  const recipes={
+    "Apteczka":[["Złom",2],["Woda",1]],
+    "Miecz Rdzy":[["Żelazo",3],["Złom",2]],
+    "Plazmowy Tasak":[["Kryształ",2],["Bateria",2]]
+  };
+  const r=recipes[name];
+  if(!r.every(x=>hasItem(x[0],x[1]))){notify("Brakuje materiałów.");return}
+  r.forEach(x=>removeItem(x[0],x[1]));
+  addItem(name,1);
+  state.stats.crafted++;
+  gainXP(60);
+  notify("🔧 Wytworzono "+name);
+  crafting();
+}
+
+/* ---------- PANELS ---------- */
+
+function renderPanel(){
+  const p=$("#panel");
+  if(activeTab==="player")renderPlayer(p);
+  if(activeTab==="inventory")renderInventory(p);
+  if(activeTab==="quests")renderQuests(p);
+  if(activeTab==="world")renderWorld(p);
+  if(activeTab==="economy")renderEconomy(p);
+  if(activeTab==="skills")renderSkills(p);
+  updateHUD();
+}
+function renderPlayer(p){
+  const xpNeed=state.level*100;
+  p.innerHTML=`
+    <div class="section">
+      <h3>Postać</h3>
+      <div class="card">
+        <div class="big">Poziom ${state.level}</div>
+        <div class="small">XP ${state.xp}/${xpNeed}</div>
+        <div class="row"><span>❤️ Zdrowie</span><b>${Math.round(state.hp)}/${state.maxHp}</b></div>
+        <div class="row"><span>⚡ Energia</span><b>${Math.round(state.energy)}/${state.maxEnergy}</b></div>
+        <div class="row"><span>🍖 Głód</span><b>${Math.round(state.hunger)}%</b></div>
+      </div>
+    </div>
+    <div class="section">
+      <h3>Wyposażenie</h3>
+      <div class="item"><span>⚔️ Broń</span><b>${state.equipment.weapon}</b></div>
+      <div class="item"><span>🚗 Pojazd</span><b>${state.equipment.vehicle}</b></div>
+    </div>
+    <div class="section">
+      <h3>Statystyki</h3>
+      <div class="grid2">
+        <div class="card">👣 ${state.stats.steps}<br><span class="small">kroków</span></div>
+        <div class="card">⚔️ ${state.stats.wins}<br><span class="small">wygranych</span></div>
+        <div class="card">🗺️ ${state.stats.discoveries}<br><span class="small">odkryć</span></div>
+        <div class="card">💰 ${state.stats.moneyEarned}<br><span class="small">zarobiono</span></div>
+      </div>
+    </div>
+    <div class="section">
+      <h3>Akcje</h3>
+      <div class="grid2">
+        <button onclick="openShop()">🛒 Sklep</button>
+        <button onclick="crafting()">🔧 Crafting</button>
+        <button onclick="save()">💾 Zapisz</button>
+        <button onclick="showSettings()">⚙️ Opcje</button>
+      </div>
+    </div>
+  `;
+}
+function renderInventory(p){
+  let html=`<div class="section"><h3>Ekwipunek</h3>`;
+  const keys=Object.keys(state.inventory);
+  if(!keys.length)html+="<p class='small'>Pusto.</p>";
+  for(const name of keys){
+    const it=items[name]||{rarity:"common"};
+    html+=`<div class="item">
+      <span>${name} ×${state.inventory[name]} <small class="badge rarity-${it.rarity}">${it.rarity}</small></span>
+      <button onclick="useItem('${name}')">${it.type==="weapon"?"EQUIP":(it.type==="food"||it.type==="heal")?"USE":"-"}</button>
+    </div>`;
+  }
+  html+=`</div><button onclick="crafting()">🔧 Crafting</button>`;
+  p.innerHTML=html;
+}
+function renderQuests(p){
+  let html=`<div class="section"><h3>Questy</h3>`;
+  for(const q of state.quests){
+    html+=`<div class="card quest ${q.done?"done":""}">
+      <b>${q.done?"✓ ":""}${q.title}</b>
+      <div class="small">${q.desc}</div>
+      <div>${q.value}/${q.goal} • nagroda ${q.reward}💰</div>
+    </div>`;
+  }
+  html+=`<h3>Osiągnięcia</h3>`;
+  html+=state.achievements.map(a=>`<div class="item">🏆 ${a}</div>`).join("");
+  p.innerHTML=html;
+}
+function renderWorld(p){
+  const l=locations.filter(a=>state.world.discovered.includes(a.id));
+  p.innerHTML=`
+    <div class="section"><h3>Świat</h3>
+      <div class="card">
+        <b>Seed:</b> ${state.seed}<br>
+        <span class="small">Odkryto ${l.length}/${locations.length} głównych lokacji</span>
+      </div>
+      ${locations.map(x=>`<div class="item">
+        <span>${x.icon} ${x.name}</span>
+        <span class="badge">${state.world.discovered.includes(x.id)?"ODKRYTA":"???"}</span>
+      </div>`).join("")}
+    </div>
+    <div class="section"><h3>Frakcje</h3>
+      ${Object.entries(state.reputation).map(([k,v])=>`<div class="row"><span>${k}</span><b>${v}</b></div>`).join("")}
+    </div>
+  `;
+}
+function renderEconomy(p){
+  const prices=Object.entries(items).filter(([n])=>items[n].price);
+  p.innerHTML=`
+    <div class="section"><h3>Ekonomia</h3>
+      <div class="card"><div class="big">💰 ${state.money}</div><span class="small">gotówka</span></div>
+      <button onclick="bank()">🏦 Bank</button>
+      <button onclick="openShop()">🛒 Sklep</button>
+      <h3 style="margin-top:15px">Ceny</h3>
+      ${prices.map(([n,it])=>`<div class="row"><span>${n}</span><b>${it.price}💰</b></div>`).join("")}
+    </div>
+  `;
+}
+function renderSkills(p){
+  p.innerHTML=`
+    <div class="section"><h3>Umiejętności</h3>
+      ${Object.entries(state.skills).map(([k,v])=>`
+      <div class="card">
+        <div class="row"><span>${k}</span><b>${v}</b></div>
+        <div class="bar" style="width:100%"><i style="width:${Math.min(100,v*10)}%"></i></div>
+      </div>`).join("")}
+    </div>
+    <div class="section"><h3>Frakcje</h3>
+      ${Object.entries(state.reputation).map(([k,v])=>`<div class="row"><span>${k}</span><b>${v}</b></div>`).join("")}
+    </div>
+  `;
+}
+function updateHUD(){
+  $("#hudLevel").textContent=state.level;
+  $("#hudHp").textContent=Math.round(state.hp);
+  $("#hpBar").style.width=(state.hp/state.maxHp*100)+"%";
+  $("#energyBar").style.width=(state.energy/state.maxEnergy*100)+"%";
+  $("#hudMoney").textContent=Math.floor(state.money);
+  $("#hudWeather").textContent=weatherName();
+  const hh=Math.floor(state.minutes/60).toString().padStart(2,"0");
+  const mm=Math.floor(state.minutes%60).toString().padStart(2,"0");
+  $("#clock").textContent=`DAY ${state.day} • ${hh}:${mm}`;
+}
+
+/* ---------- SETTINGS ---------- */
+
+function showSettings(){
+  showModal(`
+    <h2>⚙️ WORLD.EXE</h2>
+    <p>Seed świata: <b>${state.seed}</b></p>
+    <div class="grid2">
+      <button onclick="save();closeModal()">💾 Zapisz</button>
+      <button onclick="exportSave()">📤 Eksportuj save</button>
+      <button onclick="importSave()">📥 Importuj save</button>
+      <button onclick="newWorld()">🌍 Nowy świat</button>
+    </div>
+    <hr>
+    <p class="small">Sterowanie: WASD / strzałki — ruch, E — interakcja, I — ekwipunek.</p>
+  `);
+}
+function exportSave(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="world-exe-save.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importSave(){
+  const input=document.createElement("input");
+  input.type="file";input.accept=".json";
+  input.onchange=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=()=>{
+      try{
+        const loaded=JSON.parse(r.result);
+        Object.assign(state,loaded);
+        generateWorld();ensureQuests();renderPanel();closeModal();
+        notify("📥 Save zaimportowany.");
+      }catch{notify("❌ Nieprawidłowy plik.");}
+    };
+    r.readAsText(f);
+  };
+  input.click();
+}
+function newWorld(){
+  if(!confirm("Na pewno rozpocząć nowy świat?"))return;
+  localStorage.removeItem(SAVE_KEY);
+  location.reload();
+}
+
+/* ---------- SAVE ---------- */
+
+function save(){
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify(state));}catch(e){}
+  renderPanel();
+}
+function load(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(!raw)return;
+    const loaded=JSON.parse(raw);
+    Object.assign(state,loaded);
+  }catch(e){}
+}
+
+/* ---------- MODAL ---------- */
+
+function showModal(html){
+  $("#modalContent").innerHTML=html;
+  $("#modal").classList.remove("hidden");
+}
+function closeModal(){$("#modal").classList.add("hidden")}
+
+/* ---------- TABS ---------- */
+
+$$(".tabs button").forEach(btn=>{
+  btn.onclick=()=>{
+    $$(".tabs button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    activeTab=btn.dataset.tab;
+    renderPanel();
+  };
+});
+function toggleRight(){
+  const r=$("#right");
+  r.style.display=r.style.display==="none"?"flex":"none";
+  resize();
+}
+
+/* ---------- KEYBOARD ---------- */
+
+window.addEventListener("keydown",e=>{
+  if(["INPUT","TEXTAREA"].includes(document.activeElement.tagName))return;
+  const k=e.key.toLowerCase();
+  if(k==="w"||k==="arrowup")move(0,-1);
+  if(k==="s"||k==="arrowdown")move(0,1);
+  if(k==="a"||k==="arrowleft")move(-1,0);
+  if(k==="d"||k==="arrowright")move(1,0);
+  if(k==="e")interact();
+  if(k==="i"){activeTab="inventory";$$(".tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab==="inventory"));renderPanel()}
+  if(k==="escape")closeModal();
+});
+
+/* ---------- MOUSE MAP ---------- */
+
+$("#world").addEventListener("click",e=>{
+  if(e.target.closest("#controls")||e.target.closest("#mini"))return;
+  const rect=canvas.getBoundingClientRect();
+  const ox=state.player.x*TILE-canvas.width/2;
+  const oy=state.player.y*TILE-canvas.height/2;
+  const wx=Math.round((e.clientX-rect.left+ox)/TILE);
+  const wy=Math.round((e.clientY-rect.top+oy)/TILE);
+  const dx=clamp(wx-state.player.x,-1,1);
+  const dy=clamp(wy-state.player.y,-1,1);
+  if(Math.abs(dx)+Math.abs(dy)>0)move(dx,dy);
+});
+
+/* ---------- BOOT ---------- */
+
+function boot(){
+  const logs=[
+    "loading world kernel...",
+    "generating procedural terrain...",
+    "initializing NPC population...",
+    "calculating economy...",
+    "loading quests...",
+    "starting weather engine...",
+    "checking anomalies...",
+    "WORLD.EXE READY."
+  ];
+  let p=0,i=0;
+  const interval=setInterval(()=>{
+    p+=rint(7,16);
+    if(p>100)p=100;
+    $("#bootProgress").style.width=p+"%";
+    if(i<logs.length){
+      $("#bootLog").innerHTML+=logs[i]+"<br>";
+      $("#bootLog").scrollTop=9999;i++;
+    }
+    if(p>=100){
+      clearInterval(interval);
+      setTimeout(startGame,450);
+    }
+  },280);
+  $("#skipBoot").onclick=()=>{
+    clearInterval(interval);startGame();
+  };
+}
+function startGame(){
+  if(gameStarted)return;
+  gameStarted=true;
+  $("#start").classList.add("hidden");
+  init();
+}
+
+/* ---------- INIT ---------- */
+
+function init(){
+  canvas=$("#canvas");ctx=canvas.getContext("2d");
+  mini=$("#miniCanvas");miniCtx=mini.getContext("2d");
+  load();
+  generateWorld();
+  ensureQuests();
+  resize();
+  updateLocation();
+  renderPanel();
+  notify("🌍 Witaj w WORLD.EXE.");
+  notify("🧭 Kliknij mapę lub użyj WASD.");
+  requestAnimationFrame(loop);
+  setInterval(save,30000);
+}
+function loop(t){
+  const dt=Math.min(1,(t-lastTime)/1000||0);
+  lastTime=t;
+  tick(dt);
+  draw();
+  updateHUD();
+  requestAnimationFrame(loop);
+}
+
+/* ---------- START ---------- */
+
+boot();
+</script>
+</body>
+</html>
